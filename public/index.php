@@ -2,12 +2,12 @@
 <html lang='en'>
 <head>
     <meta charset='utf-8'>
-    <title>chatt</title>
+    <title>gchat</title>
     <link href='css/style.css' rel='stylesheet' type='text/css'>
     <link href="../lib/css/bootstrap.css" rel='stylesheet' type='text/css'><!---<link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.no-icons.min.css" rel="stylesheet">-->
     <link href="../lib/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet"><!---<script src="lib/js/less.min.js"></script>-->
     <link href="../node_modules/bootstrap3-dialog/dist/css/bootstrap-dialog.min.css" rel="stylesheet" type="text/css" />
-
+    <link rel="shortcut icon" type="image/png" href="img/favicon.ico"/>
 
     <script src="../lib/js/jquery-3.1.1.js">
     </script>
@@ -25,10 +25,11 @@
 </head>
 <body>
 
+<div id="sandbox"></div>
 
 <div class="error" style="display: none">
     <div class="error-code m-b-10 m-t-20">Error <i class="fa fa-warning"></i></div>
-    <h3 class="font-bold">We couldn't find a connection to node server...</h3>
+    <h3 class="font-bold">We couldn't find a connection to the server...</h3>
 
     <div class="error-desc">
         Sorry, but the service is down at the time. <br/>
@@ -46,7 +47,9 @@
 <div class="fullscreen_bg" id="fullscreen_bg" style="">
     <div class="container">
         <form class="form-signin" id="initate" name="initate">
-            <h1 class="form-signin-heading">Join a channel</h1><input autofocus="" class="form-control" id="username" placeholder="Nickname" required="" type="text"> <input class="form-control" id="channel" placeholder="Channel" required="" type="text"> <button class="btn btn-lg btn-primary btn-block" type="submit">Start chatting</button>
+            <h1 class="form-signin-heading">Join a channel</h1>
+            <input autofocus="" class="form-control" id="username" placeholder="Nickname" required="" type="text">
+            <input class="form-control" id="channel" placeholder="Channel" required="" type="text"> <button class="btn btn-lg btn-primary btn-block" type="submit">Start chatting</button>
         </form>
     </div>
 </div>
@@ -80,7 +83,7 @@
         <div class="row">
             <div class="col-md-12 paddingClass">
                 <form action="" id="messageForm" name="messageForm">
-                    <input autocomplete="off" class="form-control input-lg" id="messageText" placeholder="Send message..." type="text">
+                    <input autofocus="" autocomplete="off" class="form-control input-lg" id="messageText" placeholder="Send message..." type="text">
                 </form>
             </div>
         </div>

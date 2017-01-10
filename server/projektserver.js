@@ -75,7 +75,7 @@ io.on('connection', function(socket) {
     // console.log(socket);
 
     socket.on('setupSocket', function(data) {
-        data.username = handleUnieqName(data.username, data.channel);
+        data.username = handleUnieqName(data.username);
         // console.log(socket);
         console.log(socket.handshake.headers.cookie);
         /**
@@ -158,6 +158,7 @@ io.on('connection', function(socket) {
         var message = parseMessage(data);
 
         var adminInfo = getAdminInfo(rooms[socket.currentChannel]);
+        console.log(adminInfo);
 
         if (adminInfo !== false) {
             if (adminCommand(message.command, message.message, adminInfo, adminInfo) && message.serverCurrent === false)
@@ -235,14 +236,26 @@ io.on('connection', function(socket) {
                 case '/switch':
                     handleSwitch(message);
                     break;
+                case '/paste':
+                    handlePaste();
                 default:
                     emitServerMessage('There is no command like that');
                     break;
             }
+        } else if(inServer()){
+                emitServerMessage('There is no command like that');
         } else {
             IOemitToCurrentChannel(message);
         }
 
+    }
+    //Om servern är gel server checka det
+
+    function inServer(){
+        return socket.currentChannel === "#gel-server";
+    }
+    function handlePaste(){
+        socket.emit('picture');
     }
 
     function handleSwitch(channelNumber) {
@@ -268,13 +281,15 @@ io.on('connection', function(socket) {
 
         user = user !== undefined ? user : socket;
 
+
+
         if (channelNumber == 0) {
             emitServerMessage('You cant close the server window.');
             return;
         } else if (socket.allRooms.length < 1) {
             emitServerMessage('You need to have at least one channel open.');
             return;
-        } else if (channelNumber < 0 || channelNumber > socket.allRooms.length) {
+        } else if (channelNumber < 0 || channelNumber > socket.allRooms.length - 1) {
             emitServerMessage('That is not a valid number');
             return;
         }
@@ -289,16 +304,17 @@ io.on('connection', function(socket) {
     }
 
     function handleKick(username, by) {
-        var userExists = checkStatus(username, rooms[socket.currentChannel]);
+        var userDoesNotExists = checkStatus(username, rooms[socket.currentChannel]);
         var channelNumber = socket.allRooms.indexOf(socket.currentChannel);
         var user = null;
 
-        if (userExists) {
+        if (userDoesNotExists) {
             emitServerMessage('There is no user with that name in the channel.');
             return;
         }
 
         user = users[username].socket;
+        console.log(user.username);
 
         handleClose(channelNumber, user);
         emitServerMessage(user.username + ' was kicked form the channel by ' + by);
@@ -348,6 +364,12 @@ io.on('connection', function(socket) {
         }
 
         var user = messageData[2];
+
+        if(socket.pmSession[socket.currentChannel] !== undefined){
+            emitServerMessage('You already started a chat with that person');
+            return;
+        }
+
         var userExists = checkStatus(user, rooms[socket.currentChannel]);
 
         if (server) {
@@ -358,8 +380,11 @@ io.on('connection', function(socket) {
             return;
         } 
 
+        console.log('AVASDASD#####:     ' + socket.pmSession);
         var message = messageData[3];
-        var status = checkStatus(user, socket.pmSession);
+        var status = inObject(user, socket.pmSession);
+
+        console.log('########STATUS:' + status);
 
         switch (status) {
             case 0:
@@ -421,20 +446,21 @@ io.on('connection', function(socket) {
 
     //TODO: Fixa så att någon annan får admin, samt ta bort admin
     function leaveChannel(channelName, channelMode, user) {
-        var giveAdmin = true;
+        var giveAdmin = false;
         user = user !== undefined ? user : socket;
 
         user.allRooms = removeElement(user.allRooms, channelName);
+
         if (channelMode) {
             rooms[channelName] = removeElement(rooms[channelName], user.username);
 
             if (rooms[channelName].length > 0 && hasProp.call(rooms[channelName], 'info')) {
                 rooms[channelName].info.admin = rooms[channelName][0];
-                giveAdmin = false;
+                giveAdmin = true;
             }
 
             user.broadcast.to(channelName).emit('user left', {
-                user: socket.username,
+                user: user.username,
                 channel: channelName,
                 giveAdmin: giveAdmin
             });
@@ -456,12 +482,12 @@ io.on('connection', function(socket) {
                     channel: allUsers[key].channel
                 });
                 var channelNumber = users[u].socket.allRooms.indexOf(allUsers[key].channel);
-                var currentTab = allUsers[key].channel === users[u].socket.currentChannel;
+                // var currentTab = allUsers[key].channel === users[u].socket.currentChannel;
 
                 setTimeout(function (){
                     users[u].socket.emit('leave channel', {
                         channelNumber: channelNumber,
-                        currentTab: currentTab,
+                        currentTab: allUsers[key].channel === users[u].socket.currentChannel,
                         channelName: allUsers[key].channel
                     });
                 }, 10000);
@@ -581,24 +607,23 @@ io.on('connection', function(socket) {
         });
     }
 
+    function userFound(username){
 
-    function handleUnieqName(user, channel) {
-        var modUser = user;
+        return users[username] === undefined;
+    }
+
+    function handleUnieqName(user) {
         var firstTime = true;
 
-        while (!isNameUnique(modUser, channel)) {
-            modUser = maeNameUnique(modUser, firstTime);
+        while (!userFound(user)) {
+            user = maeNameUnique(user, firstTime);
             firstTime = false;
         }
 
-        return modUser;
+        return user;
     }
 
-    function isNameUnique(user, channel) {
-        channel = checkChannelName(channel);
 
-        return (rooms[channel] === undefined || checkStatus(user, rooms[channel]) === 1);
-    }
 
     function maeNameUnique(name, firstTime) {
         if (firstTime)
@@ -667,6 +692,18 @@ io.on('connection', function(socket) {
         }
 
         return 1;
+    }
+
+    function inObject(key, object){
+
+        if(key === socket.username)
+            return 2;
+
+        if(object[key] !== undefined)
+            return 0;
+        else
+            return 1;
+
     }
 
     function removeElement(arr, value) {

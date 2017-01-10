@@ -1,6 +1,4 @@
 var debug = process.env.NODE_ENV !== 'production';
-console.log('ASD' + debug);
-console.log('1: ' + process.env.NODE_ENV);
 
 var webpack = require('webpack');
 

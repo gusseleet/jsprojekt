@@ -1,7 +1,7 @@
 $(document).ready(function() {
     'use strict';
     //http://163.172.176.9
-    var socket = io.connect('http://192.168.1.113:1337');
+    var socket = io.connect('http://163.172.176.9:1337');
 
 
 
@@ -40,6 +40,12 @@ $(document).ready(function() {
     socket.on('leave channel', removeChannelTest);
     socket.on('switch channel', changeChannelTest);
     socket.on('connect_error', handleError);
+    socket.on('picture', handlePicture);
+
+
+    function handlePicture(){
+
+    }
 
     function handleError(err) {
         socket.disconnect();
@@ -54,6 +60,7 @@ $(document).ready(function() {
     }
 
     function removeUser(data) {
+        console.log(data);
         var username = '';
         var $user = null;
 
@@ -122,6 +129,8 @@ $(document).ready(function() {
         var username = $('#username').val();
         var channel = $('#channel').val();
 
+
+
         uploadHandler.init();
         uploadHandler.setApiKey('5078e21bf9c8a01');
         uploadHandler.setCallback(imgDone);
@@ -132,6 +141,7 @@ $(document).ready(function() {
         });
 
         $mainpage.css('display', '');
+        $('#messageForm input').focus();
     }
 
     function joinChanel(channel, id) {
@@ -400,6 +410,8 @@ $(document).ready(function() {
     checkChrome();
     $initate.submit(start);
     $messageinput.keypress(keyPress);
+
+    // $messageinput.focus();
 
 
 });

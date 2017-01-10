@@ -1,0 +1,55 @@
+{
+  "name": "refresh",
+  "version": "1.0.1",
+  "description": "A webdevelopment tool that refreshes the browser based on the filesystem changes",
+  "main": "refresh.js",
+  "bin": {
+    "refresh": "./refresh.js"
+  },
+  "engines": {
+    "node": ">=0.10.26"
+  },
+  "keywords": [
+    "refresh",
+    "webdevelopment",
+    "browser"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kinncj/refresh.git"
+  },
+  "author": {
+    "name": "Kinn Coelho Julião - kinncj@gmail.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "socket.io": "~0.9.10",
+    "pkginfo": "~0.2.3",
+    "commander": "~1.0.5",
+    "watch": ">=0.9.0"
+  },
+  "bugs": {
+    "url": "https://github.com/kinncj/refresh/issues"
+  },
+  "homepage": "https://github.com/kinncj/refresh",
+  "_id": "refresh@1.0.1",
+  "dist": {
+    "shasum": "241d24b9cdb74890ad38e13470d98a025a5ceabe",
+    "tarball": "https://registry.npmjs.org/refresh/-/refresh-1.0.1.tgz"
+  },
+  "_from": "refresh@latest",
+  "_npmVersion": "1.4.3",
+  "_npmUser": {
+    "name": "kinncj",
+    "email": "kinncj@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "kinncj",
+      "email": "kinncj@gmail.com"
+    }
+  ],
+  "directories": {},
+  "_shasum": "241d24b9cdb74890ad38e13470d98a025a5ceabe",
+  "_resolved": "https://registry.npmjs.org/refresh/-/refresh-1.0.1.tgz"
+}
