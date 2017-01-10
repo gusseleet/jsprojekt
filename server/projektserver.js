@@ -24,39 +24,6 @@ function handler(req, res) {
 var fs = require('fs');
 var markdown = require('markdown').markdown;
 var linkifyHtml = require('linkifyjs/html');
-// // var Crypt = require('./crypt.js');
-//
-//
-// var express = require('express');
-// var app = express();
-// var cookieParser = require('cookie-parser');
-// var session = require('express-session');
-//
-//
-// // app.use(express.static('public'));
-// app.use("/", express.static(__dirname));
-// app.use(cookieParser());
-// app.use(session({
-//     secret: 'keyboard cat',
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { maxAge: 60000, secure: true }
-// }));
-//
-//
-//
-//
-// app.get('/dbwebb/javascript/me/kmom10/public/', function (req, res) {
-//     // Cookies that have not been signed
-//     console.log('Cookies: ', req.cookies);
-//
-//     // Cookies that have been signed
-//     console.log('Signed Cookies: ', req.signedCookies);
-// });
-//
-// var server = app.listen(1337);
-// var io = require('socket.io')(server);
-
 
 /**
  *
@@ -72,12 +39,10 @@ var rooms = [];
 var adminCommands = ['/kick'];
 
 io.on('connection', function(socket) {
-    // console.log(socket);
+
 
     socket.on('setupSocket', function(data) {
         data.username = handleUnieqName(data.username);
-        // console.log(socket);
-        console.log(socket.handshake.headers.cookie);
         /**
          *
          * @type {Array} - Name of all initated pms
@@ -119,7 +84,6 @@ io.on('connection', function(socket) {
     }
 
     function imgHandler(data) {
-        console.log(data);
         data = linkifyHtml(data);
         IOemitToCurrentChannel(data);
     }
@@ -158,7 +122,6 @@ io.on('connection', function(socket) {
         var message = parseMessage(data);
 
         var adminInfo = getAdminInfo(rooms[socket.currentChannel]);
-        console.log(adminInfo);
 
         if (adminInfo !== false) {
             if (adminCommand(message.command, message.message, adminInfo, adminInfo) && message.serverCurrent === false)
@@ -238,6 +201,7 @@ io.on('connection', function(socket) {
                     break;
                 case '/paste':
                     handlePaste();
+                    break;
                 default:
                     emitServerMessage('There is no command like that');
                     break;
@@ -314,7 +278,6 @@ io.on('connection', function(socket) {
         }
 
         user = users[username].socket;
-        console.log(user.username);
 
         handleClose(channelNumber, user);
         emitServerMessage(user.username + ' was kicked form the channel by ' + by);
@@ -330,8 +293,6 @@ io.on('connection', function(socket) {
         channel = checkChannelName(channel);
 
         var status = inChannel(socket.username, rooms[channel]);
-        console.log(rooms);
-        console.log(status);
 
         switch (status) {
             case true:
@@ -380,12 +341,11 @@ io.on('connection', function(socket) {
             return;
         } 
 
-        console.log('AVASDASD#####:     ' + socket.pmSession);
+
         var message = messageData[3];
         var status = inObject(user, socket.pmSession);
 
-        console.log('########STATUS:' + status);
-
+      
         switch (status) {
             case 0:
                 emitServerMessage('You already started a chat with that person');
