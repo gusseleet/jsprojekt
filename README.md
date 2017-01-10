@@ -1,9 +1,12 @@
 ## README
 
 ### What is gchat?
-gchat is a chat application similar to IRC. 
+gchat is a chat application similar to IRC. It uses mainly JavaScript, node.js and socket.io.
 
 ### How to install
+Before you do anything, be sure that you have node.js installed and working. You can use webpacks build-in webserver.
+
+
 Clone this project and then run ``` npm install```. This command will download all dependencies. 
  
  You can run ```npm start``` to start the application in developer mode (this will also run ```webpack --watch ``` and ``` node ``` command).

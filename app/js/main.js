@@ -1,7 +1,7 @@
 $(document).ready(function() {
     'use strict';
     //http://163.172.176.9
-    var socket = io.connect('http://163.172.176.9:1337');
+    var socket = io.connect('http://localhost:1337');
 
 
 
