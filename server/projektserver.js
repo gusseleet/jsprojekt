@@ -67,7 +67,7 @@ io.on('connection', function(socket) {
         handleJoin(data.channel);
         handleHelp('#gel-server');
         setupSocketEmits();
-        emitServerMessage('Psst, use the command /switch 0.');
+        emitServerMessage('Type /help at anytime for more information about commands.');
     });
 
     function setupServerChannel() {
@@ -128,37 +128,19 @@ io.on('connection', function(socket) {
                 return;
         }
 
-        userCommand(message.command, message.message, message.org, message.serverCurrent);
+        userCommand(message);
     }
 
     function parseMessage(data) {
-        var command = '';
-        var message = '';
-
-        var serverCurrent = socket.currentChannel === '#gel-server';
-
-        if (data.message.charAt(0) === '/') {
-            var spaces = (data.message.match(/ /g) || []).length;
-            if (spaces === 0) {
-                command = data.message;
-                message = '';
-            } else {
-                command = data.message.substring(0, data.message.indexOf(' '));
-                message = data.message.substring(data.message.indexOf(' ') + 1, data.message.length);
-            }
-        } else {
-            command = null;
-            message = data.message;
-        }
+        var parsed = data.split(/[ ]+/);
+        var command = parsed[0] || null;
+        var commandValue =  parsed[1] || null;
+        var message = parsed.slice(2).join(" ") || null;
+        var isCommand = command[0] === "/";
 
         message = linkifyHtml(message);
 
-        return {
-            command: command,
-            message: message,
-            org: data.message,
-            serverCurrent: serverCurrent
-        };
+        return {command: command, commandValue: commandValue, message: message, isCommand: isCommand};
 
     }
 
@@ -177,21 +159,22 @@ io.on('connection', function(socket) {
         return false;
     }
 
-    //TODO: Fixa bugg om användaren enbart skriver /pm username och inte något meddelande
-    //TODO: Lägg till switch
-    function userCommand(command, message, data, server) {
+    function userCommand(message) {
+        if(inServer() && message.command === '/pm') {
+            emitServerMessage('There is no command like that');
+            return;
+        }
 
-
-        if (command !== null) {
-            switch (command) {
+        if (message.isCommand) {
+            switch (message.command) {
                 case '/help':
                     handleHelp();
                     break;
                 case '/join':
-                    handleJoin(message);
+                    handleJoin(message.commandValue);
                     break;
                 case '/pm':
-                    handlePM(data, server);
+                    handlePM(message);
                     break;
                 case '/close':
                     handleClose(message);
@@ -199,37 +182,49 @@ io.on('connection', function(socket) {
                 case '/switch':
                     handleSwitch(message);
                     break;
-                case '/paste':
-                    handlePaste();
+                case '/whereis':
+                    handleWhere(message);
                     break;
                 default:
                     emitServerMessage('There is no command like that');
                     break;
             }
-        } else if(inServer()){
-                emitServerMessage('There is no command like that');
-        } else {
-            IOemitToCurrentChannel(message);
         }
 
+            IOemitToCurrentChannel(message);
+
     }
-    //Om servern är gel server checka det
 
     function inServer(){
         return socket.currentChannel === "#gel-server";
     }
-    function handlePaste(){
-        socket.emit('picture');
+    function handleWhere(m){
+        var userDoesNotExists = userFound(m);
+
+        if (userDoesNotExists) {
+            emitServerMessage('There is no user with that name.');
+            return;
+        }
+
+        var message = users[m].socket.username + ' is in: ';
+        users[m].socket.allRooms.forEach(function(value){
+            message+= '[' + value + '], ';
+
+        });
+
+        message = message.replace(/,([^,]*)$/, '$1');
+
+        emitServerMessage(message);
     }
 
-    function handleSwitch(channelNumber) {
-        var channelName = socket.allRooms[channelNumber];
+    function handleSwitch(data) {
+        var channelName = socket.allRooms[data.commandValue];
         var currentTab = channelName === socket.currentChannel;
 
         if (currentTab) {
             emitServerMessage('You are already on this window');
             return;
-        } else if (channelNumber < 0 || channelNumber >= socket.allRooms.length) {
+        } else if (data.commandValue < 0 || data.commandValue >= socket.allRooms.length) {
             emitServerMessage('That is not a valid number');
             return;
         }
@@ -237,23 +232,19 @@ io.on('connection', function(socket) {
         socket.emit('switch channel', channelName);
     }
 
-    //TODO: Fixa så att handleClose/leaveChannel kombineras på något sätt så att socket.emit('leavechannel') exekveras så att användaren som blir
-    //kickad inte ser fönstret längre
-    function handleClose(channelNumber, user) {
-        var channelName = socket.allRooms[channelNumber];
+    function handleClose(data, user) {
+        var channelName = socket.allRooms[data.commandValue];
         var currentTab = channelName === socket.currentChannel;
 
         user = user !== undefined ? user : socket;
 
-
-
-        if (channelNumber == 0) {
+        if (data.commandValue == 0) {
             emitServerMessage('You cant close the server window.');
             return;
         } else if (socket.allRooms.length < 1) {
             emitServerMessage('You need to have at least one channel open.');
             return;
-        } else if (channelNumber < 0 || channelNumber > socket.allRooms.length - 1) {
+        } else if (data.commandValue < 0 || data.commandValue > socket.allRooms.length - 1) {
             emitServerMessage('That is not a valid number');
             return;
         }
@@ -261,7 +252,7 @@ io.on('connection', function(socket) {
         leaveChannel(channelName, channelMode(channelName), user);
 
         user.emit('leave channel', {
-            channelNumber: channelNumber,
+            channelNumber: data.commandValue,
             currentTab: currentTab,
             channelName: channelName
         });
@@ -270,14 +261,16 @@ io.on('connection', function(socket) {
     function handleKick(username, by) {
         var userDoesNotExists = checkStatus(username, rooms[socket.currentChannel]);
         var channelNumber = socket.allRooms.indexOf(socket.currentChannel);
-        var user = null;
 
-        if (userDoesNotExists) {
+        if (userDoesNotExists === 1) {
             emitServerMessage('There is no user with that name in the channel.');
+            return;
+        } else if(userDoesNotExists === 2){
+            emitServerMessage('You cant chat with yourself');
             return;
         }
 
-        user = users[username].socket;
+        var user = users[username].socket;
 
         handleClose(channelNumber, user);
         emitServerMessage(user.username + ' was kicked form the channel by ' + by);
@@ -290,6 +283,8 @@ io.on('connection', function(socket) {
      * @param {string} channel - Name of the channel
      */
     function handleJoin(channel) {
+        channel = channel.replace(/\s/g, '').toLowerCase();
+        channel = channel.replace(/[^a-z0-9]/gi,'');
         channel = checkChannelName(channel);
 
         var status = inChannel(socket.username, rooms[channel]);
@@ -312,50 +307,30 @@ io.on('connection', function(socket) {
 
     /**
      * Gets the user and the message from the PM command via RegEx checks if the user exists, or if chat already been started.
-     * @param {string} data - Message
-     * @param {boolean} server - If current channel is server
+     * @param {object} data - Message
+     *
      */
-    function handlePM(data, server) {
+    function handlePM(data) {
 
-        var messageData = data.match(/^(\S+)\s(\S+)\s(.+)$/);
-
-        if(messageData === null) {
+        if(data.message === null) {
             emitServerMessage('You need to type a message');
             return;
-        }
-
-        var user = messageData[2];
-
-        if(socket.pmSession[socket.currentChannel] !== undefined){
+        } else if(socket.pmSession[socket.currentChannel] !== undefined){
             emitServerMessage('You already started a chat with that person');
             return;
         }
 
-        var userExists = checkStatus(user, rooms[socket.currentChannel]);
+        var userExists = checkStatus(data.commandValue, rooms[socket.currentChannel]);
 
-        if (server) {
-            emitServerMessage('There is no command like that');
-            return;
-        } else if (userExists === 1) {
+        if (userExists === 1) {
             emitServerMessage('There is no user with that name in the current channel');
             return;
-        } 
-
-
-        var message = messageData[3];
-        var status = inObject(user, socket.pmSession);
-
-      
-        switch (status) {
-            case 0:
-                emitServerMessage('You already started a chat with that person');
-                break;
-            case 2:
-                emitServerMessage('You cant start a chat with yourself');
-                break;
-            default:
-                firstTimePM(user, message);
+        } else if(userExists == 2){
+            emitServerMessage('You cant start a chat with yourself');
         }
+
+
+        firstTimePM(data.commandValue, data.message);
 
     }
 
@@ -371,8 +346,8 @@ io.on('connection', function(socket) {
         socket.join(uid);
         users[user].socket.join(uid);
 
-        socket.emit('new channel', user, uid);
-        users[user].socket.emit('new channel', socket.username, uid);
+        socket.emit('new channel', user, uid, {one: socket.id, two:users[user].socket.id});
+        users[user].socket.emit('new channel', socket.username, uid, {one: socket.id, two:users[user].socket.id});
 
         socket.currentChannel = uid;
         users[user].socket.currentChannel = uid;
@@ -381,7 +356,6 @@ io.on('connection', function(socket) {
         users[user].socket.allRooms.push(uid);
 
         socket.pmSession[uid] = {user: user, channel: uid};
-        //socket.pmSession.push({user: user, channel: uid});
         users[user].socket.pmSession[uid] = {user: socket.username, channel: uid};
 
         io.in(uid).emit('new message', {
@@ -442,7 +416,6 @@ io.on('connection', function(socket) {
                     channel: allUsers[key].channel
                 });
                 var channelNumber = users[u].socket.allRooms.indexOf(allUsers[key].channel);
-                // var currentTab = allUsers[key].channel === users[u].socket.currentChannel;
 
                 setTimeout(function (){
                     users[u].socket.emit('leave channel', {
@@ -488,7 +461,6 @@ io.on('connection', function(socket) {
 
     }
 
-    //Admin helper-functions
 
     function giveAdmin(channel, user) {
         if (doesRoomExists(channel)) {
@@ -521,7 +493,6 @@ io.on('connection', function(socket) {
         }
     }
 
-    //Emits
 
     function emitServerMessage(message) {
         socket.emit('new message', {
@@ -537,18 +508,6 @@ io.on('connection', function(socket) {
             username: 'Server',
             channel: channel
         })
-    }
-
-    function broadcastServerMessage(message) {
-        io.in(socket.current).emit('new message', {
-            message: message,
-            username: 'Server',
-            channel: socket.currentChannel
-        });
-    }
-
-    function SocketEmitToChannel(message, channel) {
-        socket.broadcast.to(channel).emit('user joined', socket.username);
     }
 
     function IOemitToCurrentChannel(message) {
@@ -576,7 +535,7 @@ io.on('connection', function(socket) {
         var firstTime = true;
 
         while (!userFound(user)) {
-            user = maeNameUnique(user, firstTime);
+            user = makeNameUnique(user, firstTime);
             firstTime = false;
         }
 
@@ -585,7 +544,7 @@ io.on('connection', function(socket) {
 
 
 
-    function maeNameUnique(name, firstTime) {
+    function makeNameUnique(name, firstTime) {
         if (firstTime)
             return name + '_1';
 
@@ -601,7 +560,6 @@ io.on('connection', function(socket) {
 
 
     function handleHelp(channel) {
-
         channel = channel === undefined ? socket.currentChannel : channel;
 
         var breakline = "<br />";
@@ -609,11 +567,12 @@ io.on('connection', function(socket) {
         var helpMessage = "Welcome to gel-chat!" + breakline;
         helpMessage += breakline + "Available user commands: " + breakline;
         helpMessage += makeBold("/join [channelName]") + " -> Use to join a channel." + breakline;
-        helpMessage += makeBold("/pm [username]") + " -> Use to initiate a chat with a user" + breakline;
-        helpMessage += makeBold("/switch [channelNumber]") + " -> Use to change a tab/channel" + breakline;
-        helpMessage += makeBold("/close [channelNumber]") + " -> Use to close a tab/channel" + breakline;
+        helpMessage += makeBold("/pm [username]") + " -> Use to initiate a chat with a user." + breakline;
+        helpMessage += makeBold("/switch [channelNumber]") + " -> Use to change a tab/channel." + breakline;
+        helpMessage += makeBold("/close [channelNumber]") + " -> Use to close a tab/channel." + breakline;
+        helpMessage += makeBold("/whereis [username]") + " -> Use to find where a user is." + breakline;
         helpMessage += breakline + "Available admin commands: " + breakline;
-        helpMessage += makeBold("/kick [username]") + "Use to kick a user (Admin only)";
+        helpMessage += makeBold("/kick [username]") + " -> Use to kick a user.";
 
         emitToChannelServer(helpMessage, channel);
     }
@@ -654,17 +613,6 @@ io.on('connection', function(socket) {
         return 1;
     }
 
-    function inObject(key, object){
-
-        if(key === socket.username)
-            return 2;
-
-        if(object[key] !== undefined)
-            return 0;
-        else
-            return 1;
-
-    }
 
     function removeElement(arr, value) {
         if (arr !== undefined) {
